@@ -27,11 +27,13 @@ snapshots/
 # the project itself, and never committed.
 *.local.md
 
-# Editor / OS
+# Editor / OS / tooling state. Browser profiles in particular hold locked cache databases,
+# which is why the dev server is also told not to watch dot-directories.
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
+.*-profile-*/
 
 # Logs
 *.log

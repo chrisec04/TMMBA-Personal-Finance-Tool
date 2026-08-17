@@ -23,8 +23,16 @@ async fn claude_key_set(key: String) -> Result<KeyStatus, String> {
         return Err("Anthropic API key cannot be empty.".to_string());
     }
 
-    claude::list_models_with_key(&key).await?;
-    keychain::set_key(&key)
+    let check = claude::verify_connection_with_key(&key).await?;
+    if check.state != keychain::VerificationState::Ok {
+        return Err(check
+            .detail
+            .unwrap_or_else(|| "Anthropic connection verification failed.".to_string()));
+    }
+
+    keychain::set_key(&key)?;
+    keychain::set_connection(check);
+    Ok(keychain::status())
 }
 
 #[tauri::command]
@@ -42,6 +50,12 @@ async fn claude_send_message(body: serde_json::Value) -> Result<serde_json::Valu
     claude::send_message(body).await
 }
 
+#[tauri::command]
+async fn claude_verify_connection() -> Result<KeyStatus, String> {
+    claude::verify_connection().await?;
+    Ok(keychain::status())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -51,6 +65,7 @@ pub fn run() {
             claude_key_status,
             claude_key_set,
             claude_key_clear,
+            claude_verify_connection,
             claude_list_models,
             claude_send_message
         ])

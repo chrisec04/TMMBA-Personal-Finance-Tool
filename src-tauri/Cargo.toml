@@ -28,6 +28,7 @@ tauri-plugin-dialog = "2"
 # rustls keeps cold-clone builds off OpenSSL, which is brittle on Windows and Linux.
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 
 # The API key belongs in the OS keychain so exported finance data and app settings
 # never become a second place where a long-lived Anthropic credential can leak.

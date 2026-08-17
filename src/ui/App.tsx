@@ -18,7 +18,10 @@ const NAV: readonly { readonly route: Route; readonly label: string }[] = [
   { route: 'settings', label: 'Settings' },
 ];
 
-class ErrorBoundary extends Component<{ readonly children: ReactNode }, { readonly error: string | null }> {
+class ErrorBoundary extends Component<
+  { readonly children: ReactNode },
+  { readonly error: string | null }
+> {
   constructor(props: { readonly children: ReactNode }) {
     super(props);
     this.state = { error: null };
@@ -32,7 +35,13 @@ class ErrorBoundary extends Component<{ readonly children: ReactNode }, { readon
 
   override render(): ReactNode {
     if (this.state.error !== null) {
-      return <main className="fault"><h1>Something went wrong</h1><p>{this.state.error}</p><p>The app kept the fault visible instead of showing a blank screen.</p></main>;
+      return (
+        <main className="fault">
+          <h1>Something went wrong</h1>
+          <p>{this.state.error}</p>
+          <p>The app kept the fault visible instead of showing a blank screen.</p>
+        </main>
+      );
     }
     return this.props.children;
   }
@@ -42,19 +51,71 @@ function Shell(): ReactNode {
   const { demoLoaded, loaded, error } = useAppState();
   const [route, setRoute] = useState<Route>('snapshot');
 
-  const screen = route === 'snapshot' ? <SnapshotScreen />
-    : route === 'affordability' ? <AffordabilityScreen />
-      : route === 'recommendation' ? <RecommendationScreen />
-        : route === 'validation' ? <ValidationScreen />
-          : route === 'trends' ? <TrendsScreen />
-            : <SettingsScreen />;
+  const screen =
+    route === 'snapshot' ? (
+      <SnapshotScreen />
+    ) : route === 'affordability' ? (
+      <AffordabilityScreen />
+    ) : route === 'recommendation' ? (
+      <RecommendationScreen />
+    ) : route === 'validation' ? (
+      <ValidationScreen />
+    ) : route === 'trends' ? (
+      <TrendsScreen />
+    ) : (
+      <SettingsScreen />
+    );
 
-  return <div className="app-shell">
-    <aside className="sidebar"><div className="brand"><div className="brand-mark">PFT</div><div><strong>Personal Finance Tool</strong><span>Explainable planning</span></div></div><nav>{NAV.map((item) => <button key={item.route} className={route === item.route ? 'active' : ''} onClick={() => setRoute(item.route)}>{item.label}</button>)}</nav><p className="sidebar-note">Every figure either comes from the domain layer or shows its math.</p></aside>
-    <div className="workspace">{demoLoaded ? <div className="demo-banner"><strong>Demo data</strong> These figures are fictional and safe for screenshots.</div> : null}{error === null ? null : <div className="warning-panel">{error}</div>}{loaded ? screen : <main className="empty"><h2>Loading…</h2></main>}</div>
-  </div>;
+  return (
+    <div className="app-shell">
+      <aside className="sidebar">
+        <div className="brand">
+          <div className="brand-mark">PFT</div>
+          <div>
+            <strong>Personal Finance Tool</strong>
+            <span>Explainable planning</span>
+          </div>
+        </div>
+        <nav>
+          {NAV.map((item) => (
+            <button
+              key={item.route}
+              className={route === item.route ? 'active' : ''}
+              onClick={() => setRoute(item.route)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </nav>
+        <p className="sidebar-note">
+          Every figure either comes from the domain layer or shows its math.
+        </p>
+      </aside>
+      <div className="workspace">
+        {demoLoaded ? (
+          <div className="demo-banner">
+            <strong>Demo data</strong> These figures are fictional and safe for screenshots.
+          </div>
+        ) : null}
+        {error === null ? null : <div className="warning-panel">{error}</div>}
+        {loaded ? (
+          screen
+        ) : (
+          <main className="empty">
+            <h2>Loading…</h2>
+          </main>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export function App(): ReactNode {
-  return <ErrorBoundary><AppProvider><Shell /></AppProvider></ErrorBoundary>;
+  return (
+    <ErrorBoundary>
+      <AppProvider>
+        <Shell />
+      </AppProvider>
+    </ErrorBoundary>
+  );
 }

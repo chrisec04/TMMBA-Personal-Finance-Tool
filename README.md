@@ -11,14 +11,35 @@ Built to the Module 4 v1 build brief.
 
 No API key required. Nothing to configure.
 
+**Just want to run it?**
+
+| | |
+| --- | --- |
+| **Windows** | double-click **`Start.cmd`** |
+| **macOS / Linux** | run **`./start.sh`** |
+
+That installs what it needs on first run, starts the app, and opens it in your browser. If the
+`.sh` file will not run, it lost its executable bit in transit: `chmod +x start.sh`.
+
+**Prefer a terminal?**
+
+```bash
+npm start
+```
+
+Or the plain underlying commands:
+
 ```bash
 npm install
 npm run dev
 ```
 
-Open <http://localhost:1430>. The app loads with a **fictional demo dataset** — an invented
+Then open <http://localhost:1430>. The app loads with a **fictional demo dataset** — an invented
 persona, invented accounts, eight months of invented history — so every screen has something real
 to show immediately.
+
+The only prerequisite is [Node.js](https://nodejs.org) 20 or newer. The launcher checks for it and
+says so if it is missing.
 
 To check the arithmetic:
 

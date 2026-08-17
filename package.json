@@ -5,6 +5,7 @@
   "type": "module",
   "description": "Personal Finance Tool - a Claude-powered financial decision assistant",
   "scripts": {
+    "start": "node scripts/start.mjs",
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",

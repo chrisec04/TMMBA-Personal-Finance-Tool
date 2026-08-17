@@ -13,11 +13,17 @@
  * work to do in the demo rather than trivially passing over an empty set.
  */
 
-import { DEFAULT_MODEL, type ClaudePort, type ClaudeReply, type ClaudeRequest, type KeyStatus, type ModelInfo } from './ClaudePort.ts';
+import {
+  DEFAULT_MODEL,
+  NO_KEY,
+  type ClaudePort,
+  type ClaudeReply,
+  type ClaudeRequest,
+  type KeyStatus,
+  type ModelInfo,
+} from './ClaudePort.ts';
 import { formatMoney } from '../domain/money.ts';
 import type { AllocationPlan } from '../domain/allocation.ts';
-
-const NO_KEY: KeyStatus = { configured: false, source: 'none', hint: null };
 
 /**
  * Builds a recorded analysis that fits whatever plan it is given.
@@ -78,6 +84,17 @@ export class StubClaude implements ClaudePort {
     return Promise.resolve(NO_KEY);
   }
 
+  /**
+   * There is nothing to verify, and saying so is the honest answer.
+   *
+   * It would be easy to return `ok` here — the stub never fails, after all — but that would put
+   * a green "connected" badge on a transport that has never touched the network. The whole
+   * point of this status is to distinguish "works" from "exists".
+   */
+  verifyConnection(): Promise<KeyStatus> {
+    return Promise.resolve(NO_KEY);
+  }
+
   listModels(): Promise<readonly ModelInfo[]> {
     return Promise.resolve([{ id: DEFAULT_MODEL, displayName: 'Recorded (no key configured)' }]);
   }
@@ -86,7 +103,12 @@ export class StubClaude implements ClaudePort {
     const plan = this.planFor();
     const text =
       plan === null
-        ? JSON.stringify({ summary: 'No plan to explain.', debtNotes: [], tradeoffs: [], watchOuts: [] })
+        ? JSON.stringify({
+            summary: 'No plan to explain.',
+            debtNotes: [],
+            tradeoffs: [],
+            watchOuts: [],
+          })
         : recordedAnalysisFor(plan);
 
     return Promise.resolve({ text, latencyMs: 0, fromRecording: true });

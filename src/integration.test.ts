@@ -173,6 +173,7 @@ describe('the app flow on a fresh open', () => {
       keyStatus: () => Promise.reject(new Error('nope')),
       setKey: () => Promise.reject(new Error('nope')),
       clearKey: () => Promise.reject(new Error('nope')),
+      verifyConnection: () => Promise.reject(new Error('nope')),
       listModels: () => Promise.reject(new Error('nope')),
       send: () => Promise.reject(new Error('the network is on fire')),
     };

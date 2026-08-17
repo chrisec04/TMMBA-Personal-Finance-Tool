@@ -63,6 +63,10 @@ export class HttpClaude implements ClaudePort {
     return call<KeyStatus>('/key', { method: 'DELETE' });
   }
 
+  verifyConnection(): Promise<KeyStatus> {
+    return call<KeyStatus>('/verify', { method: 'POST' });
+  }
+
   async listModels(): Promise<readonly ModelInfo[]> {
     const status = await this.keyStatus();
     if (!status.configured) return [];

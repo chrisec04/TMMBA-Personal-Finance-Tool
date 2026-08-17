@@ -1,0 +1,61 @@
+.connection-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  background: var(--panel-2);
+}
+
+.connection-icon {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 2px solid currentColor;
+  border-radius: 999px;
+  font-weight: 900;
+}
+
+.connection-label {
+  margin-top: 0;
+  font-weight: 900;
+}
+
+.connection-ok {
+  color: var(--green);
+  background: #edf7f1;
+  border-color: rgba(47, 111, 84, .34);
+}
+
+.connection-warn {
+  color: var(--amber);
+  background: #fff7e5;
+  border-color: rgba(154, 106, 24, .34);
+}
+
+.connection-bad {
+  color: var(--red);
+  background: #fff1ee;
+  border-color: #e0b8ad;
+}
+
+.connection-idle {
+  color: #3f4640;
+  background: #efede6;
+  border-style: dashed;
+  border-color: #a9a093;
+}
+
+.connection-meta {
+  color: inherit;
+  margin-top: 10px;
+}
+
+.connection-failure {
+  border-top: 1px solid currentColor;
+  margin-top: 10px;
+  padding-top: 10px;
+}

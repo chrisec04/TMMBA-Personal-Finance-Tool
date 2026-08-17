@@ -20,19 +20,13 @@
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Plugin } from 'vite';
+import { NEVER_CHECKED, type ConnectionCheck, type KeyStatus } from '../src/claude/ClaudePort.ts';
 
 const ANTHROPIC_BASE = 'https://api.anthropic.com';
 const ANTHROPIC_VERSION = '2023-06-01';
 
 /** Where the current key came from. `env` is the automation fallback. */
 export type KeySource = 'runtime' | 'env' | 'none';
-
-export interface KeyStatus {
-  readonly configured: boolean;
-  readonly source: KeySource;
-  /** Last four characters, for identification only. Never the whole key. */
-  readonly hint: string | null;
-}
 
 /**
  * The key, held only here.
@@ -41,6 +35,7 @@ export interface KeyStatus {
  * that writes this value anywhere.
  */
 let runtimeKey: string | null = null;
+let connection: ConnectionCheck = NEVER_CHECKED;
 
 function envKey(): string | null {
   const value = process.env['ANTHROPIC_API_KEY'];
@@ -56,8 +51,10 @@ function activeKey(): { key: string; source: KeySource } | null {
 
 function status(): KeyStatus {
   const active = activeKey();
-  if (active === null) return { configured: false, source: 'none', hint: null };
-  return { configured: true, source: active.source, hint: active.key.slice(-4) };
+  if (active === null) {
+    return { configured: false, source: 'none', hint: null, connection: NEVER_CHECKED };
+  }
+  return { configured: true, source: active.source, hint: active.key.slice(-4), connection };
 }
 
 /**
@@ -89,32 +86,72 @@ function sendJson(response: ServerResponse, code: number, body: unknown): void {
   response.end(text);
 }
 
-/** Verifies a key is real before we accept it, so a typo fails in Settings and not mid-task. */
-async function verifyKey(key: string): Promise<{ ok: true } | { ok: false; message: string }> {
+function failureDetail(code: number, detail: string): string {
+  if (code === 401 || code === 403) {
+    return `The key was rejected by Anthropic (${code}). ${detail}`.trim();
+  }
+  if (code === 429) {
+    return `Anthropic rate-limited the request (429). This may be a service or quota problem, not proof the key is wrong. ${detail}`.trim();
+  }
+  if (code >= 500) {
+    return `Anthropic returned a service error (${code}). This is not proof the key is wrong. ${detail}`.trim();
+  }
+  return `Anthropic returned ${code}. ${detail}`.trim();
+}
+
+async function checkConnection(key: string): Promise<ConnectionCheck> {
+  const started = performance.now();
   try {
     const response = await fetch(`${ANTHROPIC_BASE}/v1/models?limit=1`, {
       headers: { 'x-api-key': key, 'anthropic-version': ANTHROPIC_VERSION },
     });
-    if (response.ok) return { ok: true };
-    if (response.status === 401) return { ok: false, message: 'That key was rejected by Anthropic (401). Check it was copied in full.' };
+    const latencyMs = Math.round(performance.now() - started);
+    const checkedAt = new Date().toISOString();
+    if (response.ok) {
+      return { state: 'ok', checkedAt, detail: 'Anthropic answered.', latencyMs };
+    }
     const detail = redact(await response.text(), key).slice(0, 300);
-    return { ok: false, message: `Anthropic returned ${response.status}. ${detail}` };
+    return { state: 'failed', checkedAt, detail: failureDetail(response.status, detail), latencyMs };
   } catch (error) {
+    const latencyMs = Math.round(performance.now() - started);
     const detail = redact(error instanceof Error ? error.message : String(error), key);
-    return { ok: false, message: `Could not reach Anthropic: ${detail}` };
+    return {
+      state: 'failed',
+      checkedAt: new Date().toISOString(),
+      detail: `Could not reach Anthropic: ${detail}`,
+      latencyMs,
+    };
   }
+}
+
+/** Verifies a key is real before we accept it, so a typo fails in Settings and not mid-task. */
+async function verifyKey(key: string): Promise<{ ok: true; check: ConnectionCheck } | { ok: false; message: string }> {
+  const check = await checkConnection(key);
+  if (check.state === 'ok') return { ok: true, check };
+  return { ok: false, message: check.detail ?? 'Anthropic rejected the connection check.' };
+}
+
+function recordFailedConnection(code: number, safe: string, latencyMs: number): void {
+  connection = {
+    state: 'failed',
+    checkedAt: new Date().toISOString(),
+    detail: failureDetail(code, safe.slice(0, 300)),
+    latencyMs,
+  };
 }
 
 /** Forwards a request upstream, attaching the key server-side. */
 async function forward(
   path: string,
   init: { method: string; body?: string },
+  options: { recordFailure: boolean },
 ): Promise<{ code: number; body: unknown }> {
   const active = activeKey();
   if (active === null) {
     return { code: 400, body: { error: 'No API key configured.' } };
   }
 
+  const started = performance.now();
   try {
     const response = await fetch(`${ANTHROPIC_BASE}${path}`, {
       method: init.method,
@@ -129,13 +166,82 @@ async function forward(
     const text = await response.text();
     const safe = redact(text, active.key);
     if (!response.ok) {
+      if (options.recordFailure) recordFailedConnection(response.status, safe, Math.round(performance.now() - started));
       return { code: response.status, body: { error: safe.slice(0, 1000) } };
     }
     return { code: 200, body: JSON.parse(safe) as unknown };
   } catch (error) {
     const detail = redact(error instanceof Error ? error.message : String(error), active.key);
+    if (options.recordFailure) {
+      connection = {
+        state: 'failed',
+        checkedAt: new Date().toISOString(),
+        detail: `Upstream request failed: ${detail}`,
+        latencyMs: Math.round(performance.now() - started),
+      };
+    }
     return { code: 502, body: { error: `Upstream request failed: ${detail}` } };
   }
+}
+
+export interface ClaudeProxyCall {
+  readonly path: string;
+  readonly method: string;
+  readonly body?: unknown;
+}
+
+export type ClaudeProxyResult = { readonly code: number; readonly body: unknown } | null;
+
+export async function handleClaudeProxyCall(call: ClaudeProxyCall): Promise<ClaudeProxyResult> {
+  if (call.path === '/key' && call.method === 'GET') {
+    return { code: 200, body: status() };
+  }
+
+  if (call.path === '/key' && call.method === 'PUT') {
+    const body = call.body as { key?: unknown };
+    const key = typeof body.key === 'string' ? body.key.trim() : '';
+    if (key === '') {
+      return { code: 400, body: { error: 'No key supplied.' } };
+    }
+    const verified = await verifyKey(key);
+    if (!verified.ok) {
+      return { code: 400, body: { error: verified.message } };
+    }
+    runtimeKey = key;
+    connection = verified.check;
+    return { code: 200, body: status() };
+  }
+
+  if (call.path === '/key' && call.method === 'DELETE') {
+    runtimeKey = null;
+    connection = NEVER_CHECKED;
+    return { code: 200, body: status() };
+  }
+
+  if (call.path === '/verify' && call.method === 'POST') {
+    const active = activeKey();
+    if (active === null) return { code: 200, body: status() };
+    connection = await checkConnection(active.key);
+    return { code: 200, body: status() };
+  }
+
+  if (call.path === '/models' && call.method === 'GET') {
+    return forward('/v1/models?limit=100', { method: 'GET' }, { recordFailure: false });
+  }
+
+  if (call.path === '/messages' && call.method === 'POST') {
+    return forward('/v1/messages', {
+      method: 'POST',
+      body: JSON.stringify(call.body ?? {}),
+    }, { recordFailure: true });
+  }
+
+  return null;
+}
+
+export function resetClaudeProxyForTests(): void {
+  runtimeKey = null;
+  connection = NEVER_CHECKED;
 }
 
 export function claudeProxy(): Plugin {
@@ -149,51 +255,13 @@ export function claudeProxy(): Plugin {
 
         void (async () => {
           try {
-            if (path === '/key' && method === 'GET') {
-              sendJson(response, 200, status());
+            const body = method === 'GET' || method === 'DELETE' ? {} : await readJson(request);
+            const result = await handleClaudeProxyCall({ path, method, body });
+            if (result === null) {
+              next();
               return;
             }
-
-            if (path === '/key' && method === 'PUT') {
-              const body = (await readJson(request)) as { key?: unknown };
-              const key = typeof body.key === 'string' ? body.key.trim() : '';
-              if (key === '') {
-                sendJson(response, 400, { error: 'No key supplied.' });
-                return;
-              }
-              const verified = await verifyKey(key);
-              if (!verified.ok) {
-                sendJson(response, 400, { error: verified.message });
-                return;
-              }
-              runtimeKey = key;
-              sendJson(response, 200, status());
-              return;
-            }
-
-            if (path === '/key' && method === 'DELETE') {
-              runtimeKey = null;
-              sendJson(response, 200, status());
-              return;
-            }
-
-            if (path === '/models' && method === 'GET') {
-              const result = await forward('/v1/models?limit=100', { method: 'GET' });
-              sendJson(response, result.code, result.body);
-              return;
-            }
-
-            if (path === '/messages' && method === 'POST') {
-              const body = await readJson(request);
-              const result = await forward('/v1/messages', {
-                method: 'POST',
-                body: JSON.stringify(body),
-              });
-              sendJson(response, result.code, result.body);
-              return;
-            }
-
-            next();
+            sendJson(response, result.code, result.body);
           } catch (error) {
             const active = activeKey();
             const detail = redact(

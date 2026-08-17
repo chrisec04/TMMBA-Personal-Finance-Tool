@@ -12,6 +12,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import {
   ClaudeError,
+  type ConnectionCheck,
   type ClaudePort,
   type ClaudeReply,
   type ClaudeRequest,
@@ -19,17 +20,19 @@ import {
   type ModelInfo,
 } from './ClaudePort.ts';
 
-/** What Rust sends back. It has no `source` field, because in the app there is only one. */
 interface RustKeyStatus {
   readonly configured: boolean;
+  readonly source: 'env' | 'keychain' | 'none';
   readonly hint: string | null;
+  readonly connection: ConnectionCheck;
 }
 
 function toKeyStatus(raw: RustKeyStatus): KeyStatus {
   return {
     configured: raw.configured,
-    source: raw.configured ? 'keychain' : 'none',
+    source: raw.source,
     hint: raw.hint,
+    connection: raw.connection,
   };
 }
 
@@ -59,6 +62,10 @@ export class TauriClaude implements ClaudePort {
 
   async clearKey(): Promise<KeyStatus> {
     return toKeyStatus(await command<RustKeyStatus>('claude_key_clear'));
+  }
+
+  async verifyConnection(): Promise<KeyStatus> {
+    return toKeyStatus(await command<RustKeyStatus>('claude_verify_connection'));
   }
 
   async listModels(): Promise<readonly ModelInfo[]> {
