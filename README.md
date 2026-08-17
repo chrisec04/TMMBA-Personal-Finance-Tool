@@ -19,7 +19,8 @@ No API key required. Nothing to configure.
 | **macOS / Linux** | run **`./start.sh`** |
 
 That installs what it needs on first run, starts the app, and opens it in your browser. If the
-`.sh` file will not run, it lost its executable bit in transit: `chmod +x start.sh`.
+`.sh` file will not run, it lost its executable bit in transit: `chmod +x start.sh`. From a
+Windows terminal, run it as `.\Start.cmd` — some systems do not search the current directory.
 
 **Prefer a terminal?**
 
