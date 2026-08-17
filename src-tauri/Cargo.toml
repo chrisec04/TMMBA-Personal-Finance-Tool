@@ -2,7 +2,7 @@
 name = "personal-finance-tool"
 version = "1.0.0"
 description = "Personal Finance Tool"
-authors = ["ccontreras"]
+authors = ["Chris Contreras <317781444+chrisec04@users.noreply.github.com>"]
 license = ""
 repository = ""
 edition = "2021"

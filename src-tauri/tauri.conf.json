@@ -40,7 +40,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "publisher": "ccontreras",
+    "publisher": "Chris Contreras",
     "shortDescription": "Personal finance recommendations with an Anthropic-backed desktop shell.",
     "longDescription": "Track personal finances locally while asking Anthropic for recommendations through a Rust backend that keeps the API key out of the webview.",
     "icon": [
