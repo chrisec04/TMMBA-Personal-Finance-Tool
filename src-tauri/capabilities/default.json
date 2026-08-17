@@ -1,0 +1,16 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Personal Finance Tool calls Anthropic only from Rust, after loading the API key from the OS keychain. No http permission is granted to the webview and api.anthropic.com is absent from the CSP, so frontend code cannot send credentials or finance data directly to the network. Filesystem access grants no paths statically; callers must still work within runtime scope.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-set-title",
+    "dialog:allow-open",
+    "fs:allow-read-text-file",
+    "fs:allow-write-text-file",
+    "fs:allow-mkdir",
+    "fs:allow-read-dir",
+    "fs:allow-exists"
+  ]
+}

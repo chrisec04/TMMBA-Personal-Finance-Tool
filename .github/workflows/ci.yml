@@ -1,0 +1,43 @@
+name: CI
+
+# Runs on Node only. The Tauri desktop build is deliberately not part of CI: it needs a Rust
+# toolchain and platform WebView dependencies, and none of that is required to check the thing
+# that actually matters here, which is the arithmetic.
+#
+# There is no API key in this workflow, and there does not need to be. Every calculation in this
+# tool is done locally, so the twenty-scenario math gate runs completely offline.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      # The deployment gate from the build brief: twenty debt-allocation scenarios, every
+      # intermediate and final value checked against figures worked out by hand. The brief's
+      # bar is 100%, so a single failure here should block a release.
+      - name: Math accuracy gate
+        run: npm run eval
+
+      - name: Build
+        run: npm run build

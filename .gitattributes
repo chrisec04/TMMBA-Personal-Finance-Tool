@@ -1,0 +1,10 @@
+# Normalise line endings in the repository so a clone on Windows, macOS or Linux produces the
+# same bytes. Without this, a checkout on Windows can rewrite every file to CRLF and turn an
+# otherwise clean diff into a whole-file change for the next person.
+* text=auto eol=lf
+
+# Binary, never to be touched.
+*.png binary
+*.ico binary
+*.icns binary
+*.xlsx binary

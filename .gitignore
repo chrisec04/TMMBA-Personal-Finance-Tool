@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+src-tauri/target/
+src-tauri/gen/
+
+# Secrets. The API key is entered in the app at runtime and held in the OS keychain
+# (desktop) or in the dev server's memory (browser mode), so nothing should ever land
+# here. These patterns exist so an accident cannot become a commit.
+.env
+.env.*
+!.env.example
+*.key
+secrets.json
+
+# Financial data. This tool ships with fabricated demo figures; anything real belongs
+# outside the repo. The app writes to a folder you choose, and these patterns guard
+# against one ever being created inside the repo by mistake.
+finance-data/
+data/
+snapshots/
+*.snapshots.json
+
+# Working notes kept beside the project for whoever is developing it locally. Not part of
+# the project itself, and never committed.
+*.local.md
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Scratch
+*.tmp
